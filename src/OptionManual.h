@@ -8,6 +8,7 @@ private:
     int activeSensor;
     int activePump;
     bool lock;
+    bool sensorCheck;
 public:
     OptionManual();
     void setSensor(int i){activeSensor=i;};
@@ -17,6 +18,8 @@ public:
     void lockCursor(){lock=true;};
     void unlockCursor(){lock=false;};
     int isLock(){return lock;};
+    void setSensorCheck(bool t){sensorCheck=t;};
+    bool getSensorCheck(){return sensorCheck;};
 };
 
 #endif // MANUAL

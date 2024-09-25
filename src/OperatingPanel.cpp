@@ -8,7 +8,7 @@ OperatingPanel::OperatingPanel(LiquidCrystal_I2C *screen, vector<BfButton *> but
     Option option2(2, "3.Pojemnosc");
     Option option3(3, "4.Tryb reczny");
     Option option4(4, "5.Opcje");
-    Option option5(5, "6.Konf. zaawans");
+    Option option5(5, "6.Konf. zaawans.");
 
     Option subOption0(0, "1.Wodka");
     Option subOption1(1, "2.Drink");
@@ -42,7 +42,7 @@ int OperatingPanel::updateMenuScreen()
     for (size_t i = 0; i < menuOption.size(); i++){
         options_temp = options[menuOption.at(i)].subOption;
     }
-
+ 
     if (keyboard.getKey(key_up) == press_single){if(cursor > 0)cursor--;}
     else if (keyboard.getKey(key_down) == press_single){if(cursor < options_temp.size()-1) cursor++;}
     else if (keyboard.getKey(key_up) == press_double){cursor=0;}
@@ -60,7 +60,9 @@ int OperatingPanel::updateMenuScreen()
     if(menuOption.size()>0){
         if(menuOption.at(0)==3){
             return 3;
-        }
+        }else if(menuOption.at(0)==0){
+            return 1;
+        } 
     }
 
     if (keyboard.isKeysChanged()) keyboard.resetKeys();  

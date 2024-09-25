@@ -37,6 +37,7 @@ public:
     int getKey(int i){return keyboard.getKey(i);};
     void resetKeys(){keyboard.resetKeys();};
     void cancel(){keyboard.cancelKey();};
+    void print(int i, int j, char c){screen.print(i,j,c);};
 };
 
 #endif // LCD

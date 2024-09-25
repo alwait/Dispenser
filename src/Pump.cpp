@@ -1,8 +1,9 @@
 #include "Pump.h"
 
-Pump::Pump(int pin, unsigned long& timer): pin(pin), timer(timer){
+Pump::Pump(int pin): pin(pin){
     power=100;
     signal=false;
+    timer=0;
 };
 
 void Pump::init(){

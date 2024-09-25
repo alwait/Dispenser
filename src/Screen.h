@@ -20,6 +20,7 @@ public:
     void init();
     void updateLCD(vector<String>, int);
     void lineSet(int);
+    void print(int i, int j, char c){ lcd->setCursor(i, j); lcd->print(c);}
 };
 
 #endif // SCREEN

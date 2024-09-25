@@ -11,9 +11,8 @@ BfButton btn_up(BfButton::STANDALONE_DIGITAL, UP_PIN, true, LOW);
 BfButton btn_down(BfButton::STANDALONE_DIGITAL, DOWN_PIN, true, LOW);
 
 vector<BfButton*> buttons={&btn_select, &btn_cancel, &btn_up, &btn_down};
-unsigned long timer=0;
     
-Dispenser dispenser(&lcd, &servo, leds, buttons, timer);
+Dispenser dispenser(&lcd, &servo, leds, buttons);
     
 void setup() {
 
@@ -23,7 +22,6 @@ void setup() {
   delay(1000);
   dispenser.updateMenu();
   dispenser.cancel();
-  //dispenser.setOption(1);
 }
 
 void loop() {
@@ -31,13 +29,15 @@ void loop() {
   case 0:
     dispenser.setOption(dispenser.updateMenu());
     break;
+  case 1:
+    dispenser.setOption(dispenser.autoMode());
+    break;
   case 3:
     dispenser.setOption(dispenser.manualMode());
     break;
   default:
     break;
   }
-  timer=millis();
   dispenser.repeat();
   dispenser.syncAnalogSensorsLED();
   delay(10);
