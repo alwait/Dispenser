@@ -8,6 +8,7 @@
 #include "ControlLED.h"
 #include "OptionManual.h"
 #include "OptionAuto.h"
+#include "OptionVolume.h"
 #include <vector>
 
 using namespace std;
@@ -22,7 +23,11 @@ public:
     vector<Sensor> sensors;
     OptionManual manual;
     OptionAuto automatic;
+    OptionVolume volume;
     int option;
+    int drinkOption;
+    int drinkVolume[DRINK_TYPES];
+    int drinkMixPercentage;
 
 public:
     Dispenser(LiquidCrystal_I2C*, Servo*, CRGB*, vector<BfButton*>);
@@ -32,6 +37,7 @@ public:
     void syncAnalogSensorsLED();
     int updateMenu();
     int manualMode();
+    int volumeMode();
     int autoMode();
     void setOption(int i){option=i;};
     int getOption(){return option;};

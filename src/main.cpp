@@ -32,6 +32,9 @@ void loop() {
   case 1:
     dispenser.setOption(dispenser.autoMode());
     break;
+  case 2:
+    dispenser.setOption(dispenser.volumeMode());
+    break;
   case 3:
     dispenser.setOption(dispenser.manualMode());
     break;

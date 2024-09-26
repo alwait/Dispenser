@@ -1,6 +1,8 @@
 #include "Dispenser.h"
 
-Dispenser::Dispenser(LiquidCrystal_I2C* screen, Servo* servo, CRGB* leds, vector<BfButton*> buttons): operatingPanel(screen, buttons), servo(servo), leds(leds), manual(), automatic(){
+Dispenser::Dispenser(LiquidCrystal_I2C* screen, Servo* servo, CRGB* leds, vector<BfButton*> buttons): 
+    operatingPanel(screen, buttons), servo(servo), leds(leds), manual(), automatic(), volume(){
+
     pumps.push_back(Pump(PWM_PUMP_1));
     pumps.push_back(Pump(PWM_PUMP_2));
     
@@ -10,6 +12,11 @@ Dispenser::Dispenser(LiquidCrystal_I2C* screen, Servo* servo, CRGB* leds, vector
     sensors.push_back(SENSOR_4);
 
     option=0;
+    drinkOption=0;
+    drinkVolume[0]=20;
+    drinkVolume[1]=200;
+    drinkVolume[2]=120;
+    drinkMixPercentage=20;
 }
 
 void Dispenser::init(){
@@ -55,7 +62,7 @@ void Dispenser::syncAnalogSensorsLED(){
 }
 
 int Dispenser::updateMenu(){
-    return operatingPanel.updateMenuScreen();
+    return operatingPanel.updateMenuScreen(drinkOption);
 }
 
 bool Dispenser::sensorReady(){
@@ -133,6 +140,8 @@ int Dispenser::manualMode(){
         break;
     }
     if(refresh){
+        servo.setPosition(manual.getSensor());
+        
         String onLine="Wlacz lanie";
 
         String pumpLine="Pompa: ";
@@ -171,8 +180,10 @@ int Dispenser::autoMode(){
             automatic.lockService();
             automatic.setProcessing(true);
             automatic.lockCursor(); 
-            automatic.setChangeStage(true);   
-            pumps.at(0).setTimer(millis());
+            automatic.setChangeStage(true);
+            for (Pump &pump : pumps){
+                pump.setTimer(millis());
+            }
         }
         else if(automatic.isLock() && digitalRead(SELECT_PIN)==HIGH){
         }
@@ -182,32 +193,59 @@ int Dispenser::autoMode(){
     }
     if(automatic.isProcessing() && !automatic.isStop()){
         if(automatic.getChangeStage() && automatic.serviceNow()!=NUM_LEDS+1){
-            if(millis()-pumps.at(0).getTimer()>automatic.getTime(0)/3.){
+            unsigned long pumpTimer[2];
+            pumpTimer[0]=pumps.at(0).getTimer();
+            pumpTimer[1]=pumps.at(1).getTimer();
+            if(millis()-pumpTimer[0]>automatic.getTime(0)/3 && millis()-pumpTimer[1]>automatic.getTime(1)/3){
             servo.setPosition(automatic.serviceNow());
             }
-            if(millis()-pumps.at(0).getTimer()>automatic.getTime(0)/1.5){
+            if(millis()-pumpTimer[0]>automatic.getTime(0)/1.5 && (drinkOption==0 || drinkOption==1)){
             pumps.at(0).turnOn();
+            automatic.setChangeStage(false);
+            }
+            if(millis()-pumpTimer[1]>automatic.getTime(1)/1.5 && (drinkOption==1 || drinkOption==2)){
+            pumps.at(1).turnOn();
             automatic.setChangeStage(false);
             }
         }
         else if(automatic.getChangeStage()){
-            if(millis()-pumps.at(0).getTimer()>automatic.getTime(0)/1.5){
+            if(millis()-pumps.at(0).getTimer()>automatic.getTime(0)/3 && (drinkOption==0 || drinkOption==1)){
+                pumps.at(0).turnOff();
+            }
+            if(millis()-pumps.at(1).getTimer()>automatic.getTime(1)/1.5 && (drinkOption==1 || drinkOption==2)){
+                pumps.at(1).turnOff();
+            }
+            if((millis()-pumps.at(0).getTimer()>automatic.getTime(0)/3 || drinkOption==2)
+             && (millis()-pumps.at(1).getTimer()>automatic.getTime(1)/1.5 || drinkOption==0)){
                 automatic.setProcessing(false);
                 automatic.unlockCursor();
                 automatic.setChangeStage(false);
                 automatic.resetAuto();
-                pumps.at(0).turnOff();
                 cancel();
                 return 0;
             }
         }
         if(!automatic.checkSensorsState(sensors) && automatic.serviceNow()!=NUM_LEDS+1) automatic.emergencyStop();
-        if(millis()-pumps.at(0).getTimer()>automatic.getTime(0) && !automatic.getChangeStage()){
-            pumps.at(0).turnOff();
-            pumps.at(0).setTimer(millis());
+
+        
+        if(((millis()-pumps.at(0).getTimer()>automatic.getTime(0)/2 || (drinkOption==2))
+        && (millis()-pumps.at(1).getTimer()>automatic.getTime(1) || (drinkOption==0)))
+        && !automatic.getChangeStage()){
+            for (Pump &pump : pumps){
+                pump.turnOff();
+                pump.setTimer(millis());
+            }
             automatic.serviced(automatic.serviceNow());
             automatic.setChangeStage(true);
             automatic.setEnd(true);
+        }
+        else if(((millis()-pumps.at(0).getTimer()>automatic.getTime(0)/3 || (drinkOption==2)))
+        && !automatic.getChangeStage()){
+            pumps.at(0).turnOff();
+        }
+        else if(((millis()-pumps.at(1).getTimer()>automatic.getTime(1) || (drinkOption==0)))
+        && !automatic.getChangeStage()){
+            pumps.at(1).turnOff();
         }
     }
     else if(automatic.isProcessing() && automatic.isStop()){
@@ -223,9 +261,27 @@ int Dispenser::autoMode(){
         String onLine="Wlacz rozlewanie";
 
         String drinkLine="";
-        drinkLine += "Wodka";
-        drinkLine += "    ";
-        drinkLine += "40ml";
+        switch (drinkOption)
+        {
+        case 0:
+            drinkLine += "Wodka";
+            drinkLine += " ";
+            break;
+        case 1:
+            drinkLine += "Drink";
+            drinkLine += " ";
+            break;
+        case 2:
+            drinkLine += "Napoj";
+            drinkLine += " ";
+            break;
+        default:
+            break;
+        }
+        
+        drinkLine += drinkVolume[drinkOption];
+        drinkLine += "ml ";
+        if(drinkOption==1){drinkLine += drinkMixPercentage; drinkLine += "%";}
 
         if(!automatic.isProcessing()){
         operatingPanel.updateScreen({onLine, drinkLine}, operatingPanel.getCursorPosition());
@@ -240,5 +296,96 @@ int Dispenser::autoMode(){
     
     if(refresh) operatingPanel.resetKeys();
     return 1;
+}
+
+int Dispenser::volumeMode(){
+
+    if(operatingPanel.getKey(key_cancel)==1 && !volume.isLock() && !volume.isChanging()){operatingPanel.setCursorPosition(0); volume.setChangeOption(DRINK_TYPES); return 0;}
+    else if(operatingPanel.getKey(key_cancel)==1 && !volume.isLock() && volume.isChanging()){operatingPanel.setCursorPosition(0); volume.setChangeOption(DRINK_TYPES);}
+    else if(operatingPanel.getKey(key_down)==1 && operatingPanel.getCursorPosition()<2 && !volume.isLock() && !volume.isChanging()) operatingPanel.cursorDown();
+    else if(operatingPanel.getKey(key_up)==1 && operatingPanel.getCursorPosition()>0 && !volume.isLock() && !volume.isChanging()) operatingPanel.cursorUp();
+    else if(operatingPanel.getKey(key_down)==2 && !volume.isLock()&& !volume.isChanging()) operatingPanel.setCursorPosition(2);
+    else if(operatingPanel.getKey(key_up)==2 && !volume.isLock()&& !volume.isChanging()) operatingPanel.setCursorPosition(0);
+
+    else if(operatingPanel.getKey(key_down)==1 && !volume.isLock() && volume.isChanging()){
+        if(drinkVolume[operatingPanel.getCursorPosition()]>5);
+            drinkVolume[operatingPanel.getCursorPosition()]-=5;
+    }
+    else if(operatingPanel.getKey(key_up)==1 && !volume.isLock() && volume.isChanging()){
+        int max;
+        switch (operatingPanel.getCursorPosition()){
+        case 0: max=50; break;
+        case 1: max=250; break;
+        case 2: max=250; break;
+        default: break;
+        }
+        if(drinkVolume[operatingPanel.getCursorPosition()]<=max);  
+            drinkVolume[operatingPanel.getCursorPosition()]+=5;
+    }
+    else if(operatingPanel.getKey(key_down)==2 && !volume.isLock() && volume.isChanging() && operatingPanel.getCursorPosition()==1){
+        if(drinkMixPercentage>2)
+            drinkMixPercentage-=2;
+    }
+    else if(operatingPanel.getKey(key_up)==2 && !volume.isLock() && volume.isChanging() && operatingPanel.getCursorPosition()==1){
+        if(drinkMixPercentage<=60)
+            drinkMixPercentage+=2;
+    }
+
+    if(operatingPanel.getKey(key_select)== press_long && !volume.isLock() && !volume.isChanging()){
+        volume.setChangeOption(operatingPanel.getCursorPosition());
+        volume.lockCursor(); 
+    }
+    else if(volume.isLock() && digitalRead(SELECT_PIN)==HIGH){
+        volume.unlockCursor();
+    }
+
+    bool refresh=operatingPanel.isKeysChanged();
+
+    if(refresh){
+        if(!volume.isChanging()){
+            String aLine="Wodka ";
+            aLine += drinkVolume[0];
+            aLine += "ml";
+
+            String bLine="Drink ";
+            bLine += drinkVolume[1];
+            bLine += "ml ";
+            bLine += drinkMixPercentage;
+            bLine += "%";
+
+            String cLine="Napoj ";
+            cLine += drinkVolume[2];
+            cLine += "ml";
+
+            operatingPanel.updateScreen({aLine, bLine, cLine}, operatingPanel.getCursorPosition());
+            operatingPanel.lineSet(0);
+        }
+        else{
+            String changeLine="-";
+            switch (volume.getChangeOption()){
+            case 0:
+                changeLine+=drinkVolume[0];
+                changeLine+="ml+";
+                operatingPanel.updateScreen({"     " + changeLine, "     Wodka"}, 0);
+                break;
+            case 1:
+                changeLine+=drinkVolume[1];
+                changeLine+="ml+  -";
+                changeLine+=drinkMixPercentage;
+                changeLine+="%+";
+                operatingPanel.updateScreen({" " + changeLine, "     Drink"}, 0);
+                break;
+            case 2:
+                changeLine+=drinkVolume[2];
+                changeLine+="ml+";
+                operatingPanel.updateScreen({"     " + changeLine, "     Napoj"}, 0);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    if(refresh) operatingPanel.resetKeys();
+    return 2;
 }
 
