@@ -24,7 +24,7 @@ private:
     int cursor;
 public:
     OperatingPanel(LiquidCrystal_I2C*, vector<BfButton*>);
-    int updateMenuScreen();
+    int updateMenuScreen(int&);
     void updateScreen(vector<String> lines, int startIndex){screen.updateLCD(lines, startIndex);};
     void init();
     void repeat();

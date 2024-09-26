@@ -3,6 +3,7 @@
 
 #define ANALOG_MAX 4095
 #define NUM_BUTTONS 4
+#define DRINK_TYPES 3
 // WS2812 LEDS
 #define NUM_LEDS 4
 #define LED_PIN 25

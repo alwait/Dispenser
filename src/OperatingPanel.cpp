@@ -32,10 +32,16 @@ void OperatingPanel::repeat()
     keyboard.repeat();
 }
 
-int OperatingPanel::updateMenuScreen()
+int OperatingPanel::updateMenuScreen(int& drinkType)
 {
 
-    if (keyboard.getKey(key_select) == press_single){menuOption.push_back(cursor); cursor = 0;}
+    if (keyboard.getKey(key_select) == press_single){
+        if(menuOption.size()>0){
+            if(menuOption.at(0)!=1){
+                menuOption.push_back(cursor); cursor = 0;
+            }
+        } else menuOption.push_back(cursor); cursor = 0;
+    }
     else if (keyboard.getKey(key_cancel) == press_single){if(menuOption.size() > 0) menuOption.pop_back(); }
 
     vector<Option> options_temp = options;
@@ -47,6 +53,12 @@ int OperatingPanel::updateMenuScreen()
     else if (keyboard.getKey(key_down) == press_single){if(cursor < options_temp.size()-1) cursor++;}
     else if (keyboard.getKey(key_up) == press_double){cursor=0;}
     else if (keyboard.getKey(key_down) == press_double){cursor=options_temp.size()-1;}
+    else if (keyboard.getKey(key_select) == press_long && menuOption.size()>0){
+        if(menuOption.at(0)==1) drinkType=cursor;
+        menuOption.pop_back();
+        cursor=0;
+        return 0;
+    }
 
     vector<String> names;
     for (size_t i = 0; i < options_temp.size(); i++){
@@ -60,9 +72,13 @@ int OperatingPanel::updateMenuScreen()
     if(menuOption.size()>0){
         if(menuOption.at(0)==3){
             return 3;
-        }else if(menuOption.at(0)==0){
+        }
+        else if(menuOption.at(0)==2){
+            return 2;
+        }
+        else if(menuOption.at(0)==0){
             return 1;
-        } 
+        }
     }
 
     if (keyboard.isKeysChanged()) keyboard.resetKeys();  
